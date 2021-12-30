@@ -91,6 +91,7 @@ public class XMLMapperBuilder extends BaseBuilder {
   }
 
   public void parse() {
+    //如果没有加载到相关配置  则尝试加载<mapper>标签下的配置
     if (!configuration.isResourceLoaded(resource)) {
       configurationElement(parser.evalNode("/mapper"));
       configuration.addLoadedResource(resource);

@@ -56,6 +56,7 @@ public class MapperMethod {
 
   public Object execute(SqlSession sqlSession, Object[] args) {
     Object result;
+    //判断sql的操作类型
     switch (command.getType()) {
       case INSERT: {
         Object param = method.convertArgsToSqlCommandParam(args);
@@ -73,6 +74,7 @@ public class MapperMethod {
         break;
       }
       case SELECT:
+        //判断返回值类型
         if (method.returnsVoid() && method.hasResultHandler()) {
           executeWithResultHandler(sqlSession, args);
           result = null;
@@ -84,6 +86,7 @@ public class MapperMethod {
           result = executeForCursor(sqlSession, args);
         } else {
           Object param = method.convertArgsToSqlCommandParam(args);
+          //查询1条信息
           result = sqlSession.selectOne(command.getName(), param);
           if (method.returnsOptional()
               && (result == null || !method.getReturnType().equals(result.getClass()))) {
@@ -224,6 +227,8 @@ public class MapperMethod {
     public SqlCommand(Configuration configuration, Class<?> mapperInterface, Method method) {
       final String methodName = method.getName();
       final Class<?> declaringClass = method.getDeclaringClass();
+      //根据接口路径和方法名从配置中(configuration->loadedResources)获取MappedStatement对象
+      //XML文件中的每一个SQL标签就对应一个MappedStatement对象
       MappedStatement ms = resolveMappedStatement(mapperInterface, methodName, declaringClass,
           configuration);
       if (ms == null) {
@@ -253,12 +258,16 @@ public class MapperMethod {
 
     private MappedStatement resolveMappedStatement(Class<?> mapperInterface, String methodName,
         Class<?> declaringClass, Configuration configuration) {
+      //根据mapper名称和方法名拼接statementId
       String statementId = mapperInterface.getName() + "." + methodName;
+      //判断配置中心中是否存在对应的xml方法sql
       if (configuration.hasStatement(statementId)) {
+        //返回xml中的配置信息
         return configuration.getMappedStatement(statementId);
       } else if (mapperInterface.equals(declaringClass)) {
         return null;
       }
+      //判断接口中有没有对应的方法
       for (Class<?> superInterface : mapperInterface.getInterfaces()) {
         if (declaringClass.isAssignableFrom(superInterface)) {
           MappedStatement ms = resolveMappedStatement(superInterface, methodName,

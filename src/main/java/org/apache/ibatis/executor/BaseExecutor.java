@@ -131,8 +131,11 @@ public abstract class BaseExecutor implements Executor {
 
   @Override
   public <E> List<E> query(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler) throws SQLException {
+    //根据查询参数拼接sql语句
     BoundSql boundSql = ms.getBoundSql(parameter);
+    //生成一级缓存的Key
     CacheKey key = createCacheKey(ms, parameter, rowBounds, boundSql);
+    //返回查询结果
     return query(ms, parameter, rowBounds, resultHandler, key, boundSql);
   }
 
@@ -149,10 +152,13 @@ public abstract class BaseExecutor implements Executor {
     List<E> list;
     try {
       queryStack++;
+      //判断是否有二级缓存数据
       list = resultHandler == null ? (List<E>) localCache.getObject(key) : null;
       if (list != null) {
+        //如果存在 则返回二级缓存数据
         handleLocallyCachedOutputParameters(ms, key, parameter, boundSql);
       } else {
+        //不存在二级缓存数据  查询数据库
         list = queryFromDatabase(ms, parameter, rowBounds, resultHandler, key, boundSql);
       }
     } finally {
@@ -320,12 +326,16 @@ public abstract class BaseExecutor implements Executor {
 
   private <E> List<E> queryFromDatabase(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, CacheKey key, BoundSql boundSql) throws SQLException {
     List<E> list;
+    //添加二级缓存占位符
     localCache.putObject(key, EXECUTION_PLACEHOLDER);
     try {
+      //执行查询操作
       list = doQuery(ms, parameter, rowBounds, resultHandler, boundSql);
     } finally {
+      //移除二级缓存占位符
       localCache.removeObject(key);
     }
+    //添加二级缓存实际查询数据
     localCache.putObject(key, list);
     if (ms.getStatementType() == StatementType.CALLABLE) {
       localOutputParameterCache.putObject(key, parameter);

@@ -100,6 +100,10 @@ public class XMLConfigBuilder extends BaseBuilder {
     return configuration;
   }
 
+  /**
+   * 解析xml文件中的配置信息
+   * @param root
+   */
   private void parseConfiguration(XNode root) {
     try {
       // issue #117 read properties first
@@ -362,32 +366,76 @@ public class XMLConfigBuilder extends BaseBuilder {
     }
   }
 
+  /**
+   * <--! 1使用类路径 -->
+   * <mappers>
+   *     <mapper resource="org/mybatis/builder/AuthorMapper.xml"/>
+   *       <mapper resource="org/mybatis/builder/BlogMapper.xml"/>
+   *    <mapper resource="org/mybatis/builder/PostMapper.xml"/>
+   * </mappers>
+   * <--! 2使用绝对url路径 -->
+   * <mappers>
+   *    <mapper url="file:///var/mappers/AuthorMapper.xml"/>
+   *    <mapper url="file:///var/mappers/BlogMapper.xml"/>
+   *    <mapper url="file:///var/mappers/PostMapper.xml"/>
+   * </mappers>
+   * <--! 3使用java类名 -->
+   * <mappers>
+   *    <mapper class="org.mybatis.builder.AuthorMapper"/>
+   *    <mapper class="org.mybatis.builder.BlogMapper"/>
+   *    <mapper class="org.mybatis.builder.PostMapper"/>
+   * </mappers>
+   *
+   * <--! 4自动扫描包下所有映射器 -->
+   * <mappers>
+   *    <package name="org.mybatis.builder"/>
+   * </mappers
+   * @param parent
+   * @throws Exception
+   */
   private void mapperElement(XNode parent) throws Exception {
+    //装配mapper相关配置
     if (parent != null) {
+      //获取<mappers>中的子节点
+      //<mappers>
+      //    <mapper  resource="mapper/UserMapper.xml"/>
+      //</mappers>
       for (XNode child : parent.getChildren()) {
+        //如果是package属性 则扫描包下所有的映射器
+        //<package name="org.mybatis.builder"/>
         if ("package".equals(child.getName())) {
+          //获取包路径
           String mapperPackage = child.getStringAttribute("name");
+          //将查询到包下的映射器装配到configueation中
+          //configuration.mapperRegistry.knownMappers 实际就是一个hashMap  Map<Class<?>, MapperProxyFactory<?>>
           configuration.addMappers(mapperPackage);
         } else {
+          //获取类路径
           String resource = child.getStringAttribute("resource");
+          //获取绝对路径
           String url = child.getStringAttribute("url");
+          //获取java类名
           String mapperClass = child.getStringAttribute("class");
           if (resource != null && url == null && mapperClass == null) {
+            //根据类路径装配
             ErrorContext.instance().resource(resource);
             try(InputStream inputStream = Resources.getResourceAsStream(resource)) {
               XMLMapperBuilder mapperParser = new XMLMapperBuilder(inputStream, configuration, resource, configuration.getSqlFragments());
               mapperParser.parse();
             }
           } else if (resource == null && url != null && mapperClass == null) {
+            //根据绝对路径装配
             ErrorContext.instance().resource(url);
             try(InputStream inputStream = Resources.getUrlAsStream(url)){
               XMLMapperBuilder mapperParser = new XMLMapperBuilder(inputStream, configuration, url, configuration.getSqlFragments());
               mapperParser.parse();
             }
           } else if (resource == null && url == null && mapperClass != null) {
+            //根据类名装配
             Class<?> mapperInterface = Resources.classForName(mapperClass);
             configuration.addMapper(mapperInterface);
           } else {
+            //一个映射器元素只能指定一个 url、资源或类，但不能超过一个。
             throw new BuilderException("A mapper element may only specify a url, resource or class, but not more than one.");
           }
         }

@@ -84,14 +84,18 @@ public class CachingExecutor implements Executor {
 
   @Override
   public <E> List<E> query(MappedStatement ms, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler) throws SQLException {
+    //拼接查询sql
     BoundSql boundSql = ms.getBoundSql(parameterObject);
+    //生成一级缓存的key
     CacheKey key = createCacheKey(ms, parameterObject, rowBounds, boundSql);
+    //返回查询结果
     return query(ms, parameterObject, rowBounds, resultHandler, key, boundSql);
   }
 
   @Override
   public <E> List<E> query(MappedStatement ms, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler, CacheKey key, BoundSql boundSql)
       throws SQLException {
+    //判断缓存是否有数据 有则取缓存中的数据
     Cache cache = ms.getCache();
     if (cache != null) {
       flushCacheIfRequired(ms);
@@ -106,6 +110,7 @@ public class CachingExecutor implements Executor {
         return list;
       }
     }
+    //一级缓存中没有相关查询数据 去数据库中查询数据
     return delegate.query(ms, parameterObject, rowBounds, resultHandler, key, boundSql);
   }
 
